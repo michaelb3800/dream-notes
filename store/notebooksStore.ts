@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Notebook, Note } from '@/types';
 import { mockNotebooks } from '@/mocks/notebooks';
 import { mockNotes } from '@/mocks/notes';
+import { apiService } from '../services/api';
 
 interface NotebooksState {
   notebooks: Notebook[];
@@ -12,13 +13,14 @@ interface NotebooksState {
   currentNoteId: string | null;
   isLoading: boolean;
   error: string | null;
+  selectedNotebook: Notebook | null;
   
   // Notebook actions
   fetchNotebooks: () => Promise<void>;
-  addNotebook: (notebook: Omit<Notebook, 'id' | 'createdAt' | 'lastUpdated'>) => Promise<Notebook>;
-  updateNotebook: (id: string, data: Partial<Notebook>) => Promise<void>;
+  createNotebook: (notebook: Omit<Notebook, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateNotebook: (id: string, notebook: Partial<Notebook>) => Promise<void>;
   deleteNotebook: (id: string) => Promise<void>;
-  setCurrentNotebook: (id: string | null) => void;
+  selectNotebook: (notebook: Notebook | null) => void;
   
   // Note actions
   fetchNotes: (notebookId: string) => Promise<void>;
@@ -32,7 +34,7 @@ interface NotebooksState {
   generateFlashcards: (noteId: string) => Promise<void>;
 }
 
-export const useNotebooksStore = create<NotebooksState>()(
+const useNotebooksStore = create<NotebooksState>()(
   persist(
     (set, get) => ({
       notebooks: [],
@@ -41,95 +43,79 @@ export const useNotebooksStore = create<NotebooksState>()(
       currentNoteId: null,
       isLoading: false,
       error: null,
+      selectedNotebook: null,
 
       fetchNotebooks: async () => {
         set({ isLoading: true, error: null });
         try {
-          // In a real app, this would be an API call to Firestore
-          await new Promise(resolve => setTimeout(resolve, 500));
-          set({ notebooks: mockNotebooks, isLoading: false });
+          const response = await apiService.getNotebooks();
+          if (response.error) {
+            throw new Error(response.error);
+          }
+          if (response.data) {
+            set({ notebooks: response.data, isLoading: false });
+          }
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Failed to fetch notebooks',
-            isLoading: false 
-          });
+          set({ error: error instanceof Error ? error.message : 'Failed to fetch notebooks', isLoading: false });
         }
       },
 
-      addNotebook: async (notebookData) => {
+      createNotebook: async (notebook) => {
         set({ isLoading: true, error: null });
         try {
-          // In a real app, this would be an API call to Firestore
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          const newNotebook: Notebook = {
-            id: `notebook_${Date.now()}`,
-            lastUpdated: Date.now(),
-            createdAt: Date.now(),
-            ...notebookData,
-          };
-          
-          set(state => ({
-            notebooks: [...state.notebooks, newNotebook],
-            isLoading: false,
-          }));
-          
-          return newNotebook;
+          const response = await apiService.createNotebook(notebook);
+          if (response.error) {
+            throw new Error(response.error);
+          }
+          if (response.data) {
+            set((state) => ({
+              notebooks: [...state.notebooks, response.data!],
+              isLoading: false,
+            }));
+          }
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Failed to add notebook',
-            isLoading: false 
-          });
-          throw error;
+          set({ error: error instanceof Error ? error.message : 'Failed to create notebook', isLoading: false });
         }
       },
 
-      updateNotebook: async (id, data) => {
+      updateNotebook: async (id, notebook) => {
         set({ isLoading: true, error: null });
         try {
-          // In a real app, this would be an API call to Firestore
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          set(state => ({
-            notebooks: state.notebooks.map(notebook => 
-              notebook.id === id 
-                ? { ...notebook, ...data, lastUpdated: Date.now() } 
-                : notebook
-            ),
-            isLoading: false,
-          }));
+          const response = await apiService.updateNotebook(id, notebook);
+          if (response.error) {
+            throw new Error(response.error);
+          }
+          if (response.data) {
+            set((state) => ({
+              notebooks: state.notebooks.map((n) => (n.id === id ? response.data! : n)),
+              selectedNotebook: state.selectedNotebook?.id === id ? response.data! : state.selectedNotebook,
+              isLoading: false,
+            }));
+          }
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Failed to update notebook',
-            isLoading: false 
-          });
-          throw error;
+          set({ error: error instanceof Error ? error.message : 'Failed to update notebook', isLoading: false });
         }
       },
 
       deleteNotebook: async (id) => {
         set({ isLoading: true, error: null });
         try {
-          // In a real app, this would be an API call to Firestore
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          set(state => ({
-            notebooks: state.notebooks.filter(notebook => notebook.id !== id),
-            notes: state.notes.filter(note => note.notebookId !== id),
-            currentNotebookId: state.currentNotebookId === id ? null : state.currentNotebookId,
+          const response = await apiService.deleteNotebook(id);
+          if (response.error) {
+            throw new Error(response.error);
+          }
+          set((state) => ({
+            notebooks: state.notebooks.filter((n) => n.id !== id),
+            selectedNotebook: state.selectedNotebook?.id === id ? null : state.selectedNotebook,
             isLoading: false,
           }));
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Failed to delete notebook',
-            isLoading: false 
-          });
-          throw error;
+          set({ error: error instanceof Error ? error.message : 'Failed to delete notebook', isLoading: false });
         }
       },
 
-      setCurrentNotebook: (id) => {
-        set({ currentNotebookId: id });
+      selectNotebook: (notebook) => {
+        set({ selectedNotebook: notebook });
       },
 
       fetchNotes: async (notebookId) => {
@@ -377,3 +363,5 @@ export const useNotebooksStore = create<NotebooksState>()(
     }
   )
 );
+
+export default useNotebooksStore;

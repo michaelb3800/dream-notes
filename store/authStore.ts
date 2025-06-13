@@ -1,136 +1,100 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from '@/types';
-import { mockUser } from '@/mocks/user';
+import { persist } from 'zustand/middleware';
+import { User } from '../types';
+import { api } from '../services/api';
+import { STORAGE_KEYS } from '../constants';
 
 interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
-  // Auth actions
   login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  verifyStudent: (email: string, institution: string) => Promise<void>;
   logout: () => void;
-  resetPassword: (email: string) => Promise<void>;
-  updateUser: (userData: Partial<User>) => void;
+  clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
+export const useAuth = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
 
       login: async (email: string, password: string) => {
-        set({ isLoading: true, error: null });
         try {
-          // In a real app, this would be an API call to Firebase Auth
-          // For now, we'll simulate a successful login with mock data
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          if (email && password) {
-            set({ 
-              user: mockUser,
-              isAuthenticated: true,
-              isLoading: false 
-            });
-          } else {
-            throw new Error('Invalid email or password');
-          }
+          set({ isLoading: true, error: null });
+          const response = await api.login(email, password);
+          set({
+            user: response.data.user,
+            token: response.data.token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : 'Login failed',
-            isLoading: false 
+            isLoading: false,
           });
         }
       },
 
-      signUp: async (email: string, password: string, name: string) => {
-        set({ isLoading: true, error: null });
+      signup: async (email: string, password: string, name: string) => {
         try {
-          // In a real app, this would be an API call to Firebase Auth
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          if (email && password && name) {
-            const newUser: User = {
-              ...mockUser,
-              id: 'new_user_id',
-              email,
-              name,
-              planId: 'free',
-              isStudent: email.endsWith('.edu'),
-              onboardComplete: false,
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            };
-            
-            set({ 
-              user: newUser,
-              isAuthenticated: true,
-              isLoading: false 
-            });
-          } else {
-            throw new Error('Please fill in all required fields');
-          }
+          set({ isLoading: true, error: null });
+          const response = await api.signup(email, password, name);
+          set({
+            user: response.data.user,
+            token: response.data.token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Sign up failed',
-            isLoading: false 
+          set({
+            error: error instanceof Error ? error.message : 'Signup failed',
+            isLoading: false,
+          });
+        }
+      },
+
+      verifyStudent: async (email: string, institution: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          await api.verifyStudent(email, institution);
+          set({ isLoading: false });
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Verification failed',
+            isLoading: false,
           });
         }
       },
 
       logout: () => {
-        // In a real app, this would call Firebase Auth signOut
-        set({ 
+        set({
           user: null,
+          token: null,
           isAuthenticated: false,
-          error: null 
+          error: null,
         });
       },
 
-      resetPassword: async (email: string) => {
-        set({ isLoading: true, error: null });
-        try {
-          // In a real app, this would call Firebase Auth sendPasswordResetEmail
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          if (email) {
-            set({ isLoading: false });
-            return Promise.resolve();
-          } else {
-            throw new Error('Please enter a valid email');
-          }
-        } catch (error) {
-          set({ 
-            error: error instanceof Error ? error.message : 'Password reset failed',
-            isLoading: false 
-          });
-          return Promise.reject(error);
-        }
-      },
-
-      updateUser: (userData: Partial<User>) => {
-        const currentUser = get().user;
-        if (currentUser) {
-          set({
-            user: {
-              ...currentUser,
-              ...userData,
-              updatedAt: Date.now(),
-            },
-          });
-        }
+      clearError: () => {
+        set({ error: null });
       },
     }),
     {
-      name: 'dream-notes-auth',
-      storage: createJSONStorage(() => AsyncStorage),
+      name: STORAGE_KEYS.AUTH,
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

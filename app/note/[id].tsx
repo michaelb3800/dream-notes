@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,36 +10,54 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useNotebooksStore } from '@/store/notebooksStore';
 import { formatDate } from '@/utils/date';
+import { Ionicons } from '@expo/vector-icons';
+import { useNotesStore } from '../../store/notesStore';
+import { useAuthStore } from '../../store/authStore';
+import { Note } from '../../types';
 
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { notes, notebooks, deleteNote, generateSummary, generateFlashcards } = useNotebooksStore();
+  const { user } = useAuthStore();
+  const { getNote, deleteNote, isLoading } = useNotesStore();
+  const { notes, notebooks, generateSummary, generateFlashcards } = useNotebooksStore();
   
   const [showSummary, setShowSummary] = useState(true);
   const [showNeedToKnow, setShowNeedToKnow] = useState(true);
   const [showExtraInsights, setShowExtraInsights] = useState(true);
   
-  const note = notes.find(n => n.id === id);
+  const [note, setNote] = useState<Note | undefined>();
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (id) {
+      const foundNote = getNote(id);
+      if (foundNote) {
+        setNote(foundNote);
+      } else {
+        setError('Note not found');
+      }
+    }
+  }, [id, getNote]);
+
   const notebook = note ? notebooks.find(n => n.id === note.notebookId) : null;
 
-  if (!note || !notebook) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>Note not found</Text>
-      </SafeAreaView>
-    );
-  }
+  const handleDelete = async () => {
+    if (!note) return;
 
-  const handleDeleteNote = async () => {
-    await deleteNote(note.id);
-    router.back();
+    try {
+      await deleteNote(note.id);
+      router.back();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to delete note');
+    }
   };
 
-  const handleEditNote = () => {
+  const handleEdit = () => {
+    if (!note) return;
     router.push({
       pathname: '/create-note',
-      params: { noteId: note.id, notebookId: note.notebookId }
+      params: { noteId: note.id }
     });
   };
 
@@ -105,6 +123,17 @@ export default function NoteScreen() {
     });
   };
 
+  if (!note) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Note' }} />
+        <View style={styles.content}>
+          <Text style={styles.errorText}>{error || 'Loading...'}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen 
@@ -114,17 +143,17 @@ export default function NoteScreen() {
             <View style={styles.headerButtons}>
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={handleEditNote}
-                activeOpacity={0.7}
+                onPress={handleEdit}
+                disabled={isLoading}
               >
-                <Edit size={20} color={colors.text} />
+                <Ionicons name="create-outline" size={24} color="#007AFF" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={handleDeleteNote}
-                activeOpacity={0.7}
+                onPress={handleDelete}
+                disabled={isLoading}
               >
-                <Trash2 size={20} color={colors.error} />
+                <Ionicons name="trash-outline" size={24} color="#ff3b30" />
               </TouchableOpacity>
             </View>
           ),
@@ -134,8 +163,8 @@ export default function NoteScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.notebookInfo}>
-            <Text style={styles.emoji}>{notebook.emoji}</Text>
-            <Text style={styles.notebookTitle}>{notebook.title}</Text>
+            <Text style={styles.emoji}>{notebook?.emoji}</Text>
+            <Text style={styles.notebookTitle}>{notebook?.title}</Text>
           </View>
           <Text style={styles.date}>
             {formatDate(note.updatedAt)}
