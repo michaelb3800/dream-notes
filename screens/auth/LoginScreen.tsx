@@ -7,12 +7,12 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { useAuth } from '../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme';
 import { ROUTES } from '../../constants';
 
 export default function LoginScreen({ navigation }: any) {
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error } = useAuthStore();
   const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
