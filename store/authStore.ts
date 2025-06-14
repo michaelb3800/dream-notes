@@ -11,13 +11,15 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUser: (data: Partial<User>) => void;
   verifyStudent: (email: string, institution: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
 }
 
-export const useAuth = create<AuthState>()(
+export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
@@ -44,7 +46,7 @@ export const useAuth = create<AuthState>()(
         }
       },
 
-      signup: async (email: string, password: string, name: string) => {
+      signUp: async (email: string, password: string, name: string) => {
         try {
           set({ isLoading: true, error: null });
           const response = await api.signup(email, password, name);
@@ -60,6 +62,26 @@ export const useAuth = create<AuthState>()(
             isLoading: false,
           });
         }
+      },
+
+      resetPassword: async (email: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          // Placeholder implementation
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          set({ isLoading: false });
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Password reset failed',
+            isLoading: false,
+          });
+        }
+      },
+
+      updateUser: (data: Partial<User>) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...data } : state.user,
+        }));
       },
 
       verifyStudent: async (email: string, institution: string) => {
@@ -98,3 +120,6 @@ export const useAuth = create<AuthState>()(
     }
   )
 );
+
+// Backwards compatibility
+export const useAuth = useAuthStore;
