@@ -78,4 +78,11 @@ export async function verifyISIC(cardNumber: string): Promise<SheerIDVerificatio
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
   }
-} 
+}
+
+export async function verifyStudentID(fileUri: string): Promise<{ verified: boolean }> {
+  // Mocked SheerID SDK - simply check that the file ends with .jpg or .jpeg
+  const isJpeg = fileUri.toLowerCase().endsWith('.jpg') || fileUri.toLowerCase().endsWith('.jpeg');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return { verified: isJpeg };
+}

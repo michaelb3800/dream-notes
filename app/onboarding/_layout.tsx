@@ -22,6 +22,10 @@ export default function OnboardingLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="create-account" />
+      <Stack.Screen name="select-subjects" />
+      <Stack.Screen name="upload-id" />
+      <Stack.Screen name="enable-notifications" />
       <Stack.Screen name="plan-selection" />
       <Stack.Screen name="tutorial" />
     </Stack>
