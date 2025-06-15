@@ -1,6 +1,6 @@
 # Privacy Policy for Dream Notes
 
-Last updated: [Current Date]
+Last updated: March 1, 2025
 
 ## Introduction
 
@@ -69,6 +69,6 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 ## Contact Us
 
 If you have any questions about this Privacy Policy, please contact us at:
-- Email: [Your Contact Email]
-- Website: [Your Website]
-- Address: [Your Business Address] 
+- Email: support@dreamnotes.app
+- Website: https://dreamnotes.app
+- Address: 123 Dream Street, Imagination City

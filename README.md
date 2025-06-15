@@ -26,7 +26,7 @@ An AI-powered note-taking and study companion app.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/dream-notes.git
+git clone https://github.com/rork/dream-notes.git
 cd dream-notes
 ```
 
@@ -53,12 +53,12 @@ npm start
 1. Update version and build number in `app.json`
 2. Build the app:
 ```bash
-eas build --platform ios
+npm run build:ios
 ```
 
 3. Submit to App Store:
 ```bash
-eas submit --platform ios
+npm run submit:ios
 ```
 
 ### Android
@@ -66,12 +66,12 @@ eas submit --platform ios
 1. Update version and versionCode in `app.json`
 2. Build the app:
 ```bash
-eas build --platform android
+npm run build:android
 ```
 
 3. Submit to Play Store:
 ```bash
-eas submit --platform android
+npm run submit:android
 ```
 
 ## App Store Requirements
