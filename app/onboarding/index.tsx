@@ -41,7 +41,7 @@ export default function Onboarding() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.push('/onboarding/plan-selection')}
+          onPress={() => router.push('/onboarding/create-account')}
         >
           <Text style={styles.buttonText}>Get Started</Text>
           <Ionicons name="arrow-forward" size={24} color="#fff" />

@@ -1,140 +1,80 @@
 import ENV from '../config/env';
-import { Note, Flashcard, Quiz, Question } from '../types';
-import { api } from './api';
 
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
+const OPENAI_API = 'https://api.openai.com/v1';
+
+interface ChatChoice {
+  message: { content: string };
 }
 
-class AIService {
-  private readonly API_KEY: string;
-  private readonly API_URL: string;
+interface ChatResponse {
+  choices: ChatChoice[];
+}
 
-  constructor() {
-    this.API_KEY = ENV.AI.OPENAI_API_KEY;
-    this.API_URL = 'https://api.openai.com/v1';
-  }
-
-  private async makeRequest<T>(endpoint: string, data: any): Promise<OpenAIResponse> {
-    const response = await fetch(`${this.API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.API_KEY}`,
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      throw new Error('AI request failed');
+async function requestWithBackoff(url: string, options: RequestInit & { timeout?: number }, retries = 2, delay = 1000): Promise<any> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), options.timeout ?? 10000);
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    if (!res.ok) {
+      throw new Error(`status ${res.status}`);
     }
-
-    return response.json() as Promise<OpenAIResponse>;
-  }
-
-  async generateSummary(note: Note): Promise<string> {
-    const prompt = `Summarize the following note in a concise way:\n\n${note.content}`;
-    
-    const response = await this.makeRequest('/chat/completions', {
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: 'You are a helpful study assistant that creates concise summaries.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 150,
-    });
-
-    return response.choices[0].message.content;
-  }
-
-  async generateFlashcards(note: Note): Promise<Flashcard[]> {
-    const prompt = `Create 5 flashcards from the following note. Format each flashcard as JSON with 'front' and 'back' fields:\n\n${note.content}`;
-    
-    const response = await this.makeRequest('/chat/completions', {
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: 'You are a helpful study assistant that creates effective flashcards.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 500,
-    });
-
-    const flashcards = JSON.parse(response.choices[0].message.content);
-    return flashcards.map((card: any) => ({
-      id: `flashcard_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      noteId: note.id,
-      front: card.front,
-      back: card.back,
-      tags: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
-  }
-
-  async generateQuiz(note: Note): Promise<Quiz> {
-    const prompt = `Create a quiz with 5 multiple-choice questions from the following note. Format as JSON with 'title' and 'questions' array. Each question should have 'text', 'options' array, and 'correctOption' index:\n\n${note.content}`;
-    
-    const response = await this.makeRequest('/chat/completions', {
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: 'You are a helpful study assistant that creates effective quizzes.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 1000,
-    });
-
-    const quizData = JSON.parse(response.choices[0].message.content);
-    return {
-      id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      noteId: note.id,
-      title: quizData.title,
-      questions: quizData.questions.map((q: any) => ({
-        id: `question_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: q.text,
-        options: q.options,
-        correctOption: q.correctOption,
-      })),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
-  async analyzeHandwriting(imageUrl: string): Promise<string> {
-    const response = await this.makeRequest('/chat/completions', {
-      model: 'gpt-4-vision-preview',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Convert this handwritten note to text. Be as accurate as possible.' },
-            { type: 'image_url', image_url: imageUrl },
-          ],
-        },
-      ],
-      max_tokens: 1000,
-    });
-
-    return response.choices[0].message.content;
-  }
-
-  async suggestImprovements(note: Note): Promise<string[]> {
-    const prompt = `Analyze this note and suggest 3 specific improvements for better understanding and retention:\n\n${note.content}`;
-    
-    const response = await this.makeRequest('/chat/completions', {
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: 'You are a helpful study assistant that provides specific improvement suggestions.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 300,
-    });
-
-    return response.choices[0].message.content.split('\n').filter(Boolean);
+    return res.json();
+  } catch (err) {
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, delay));
+      return requestWithBackoff(url, options, retries - 1, delay * 2);
+    }
+    throw err;
   }
 }
 
-export const aiService = new AIService(); 
+const headers = {
+  'Content-Type': 'application/json',
+  Authorization: `Bearer ${ENV.AI.OPENAI_API_KEY}`,
+};
+
+export async function summarizeNote(text: string): Promise<string> {
+  const body = {
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'Summarize the provided note in a concise paragraph.' },
+      { role: 'user', content: text },
+    ],
+    max_tokens: 150,
+  };
+  const data: ChatResponse = await requestWithBackoff(`${OPENAI_API}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) });
+  return data.choices[0].message.content.trim();
+}
+
+export async function generateFlashcards(text: string): Promise<Array<{ front: string; back: string }>> {
+  const body = {
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'Create 5 study flashcards as JSON with front and back.' },
+      { role: 'user', content: text },
+    ],
+    max_tokens: 300,
+  };
+  const data: ChatResponse = await requestWithBackoff(`${OPENAI_API}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) });
+  return JSON.parse(data.choices[0].message.content);
+}
+
+export async function explainConcept(concept: string): Promise<string> {
+  const body = {
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'Explain the concept in simple terms for a student.' },
+      { role: 'user', content: concept },
+    ],
+    max_tokens: 200,
+  };
+  const data: ChatResponse = await requestWithBackoff(`${OPENAI_API}/chat/completions`, { method: 'POST', headers, body: JSON.stringify(body) });
+  return data.choices[0].message.content.trim();
+}
+
+export async function createIllustration(prompt: string): Promise<string> {
+  const body = { prompt, n: 1, size: '1024x1024' };
+  const data = await requestWithBackoff(`${OPENAI_API}/images/generations`, { method: 'POST', headers, body: JSON.stringify(body) });
+  return data.data[0].url as string;
+}

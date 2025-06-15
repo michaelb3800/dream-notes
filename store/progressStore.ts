@@ -77,19 +77,15 @@ const useProgressStore = create<ProgressState & {
   addXP: (amount: number) => {
     const { progress } = get();
     if (!progress) return;
-    
-    // Calculate new XP and level
-    const newXP = progress.xp + amount;
-    
-    // Simple level calculation (adjust as needed)
-    // Level 1: 0-999 XP, Level 2: 1000-1999 XP, etc.
-    const newLevel = Math.floor(newXP / 1000) + 1;
-    
+
+    const totalXP = progress.xp + amount;
+    const level = Math.floor(Math.sqrt(totalXP / 10));
+
     set({
       progress: {
         ...progress,
-        xp: newXP,
-        level: newLevel,
+        xp: totalXP,
+        level,
       },
     });
   },
