@@ -50,14 +50,14 @@ module.exports = {
   },
   extra: {
     eas: {
-      projectId: 'your-project-id'
+      projectId: 'dream-notes-prod'
     }
   },
-  owner: 'your-expo-username',
+  owner: 'rork',
   runtimeVersion: {
     policy: 'sdkVersion'
   },
   updates: {
-    url: 'https://u.expo.dev/your-project-id'
+    url: 'https://u.expo.dev/dream-notes-prod'
   }
 }; 

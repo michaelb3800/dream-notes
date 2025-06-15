@@ -11,6 +11,6 @@
     <key>EXUpdatesRuntimeVersion</key>
     <string>exposdk:50.0.0</string>
     <key>EXUpdatesURL</key>
-    <string>https://u.expo.dev/your-project-id</string>
+    <string>https://u.expo.dev/dream-notes-prod</string>
   </dict>
 </plist>

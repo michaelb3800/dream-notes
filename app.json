@@ -70,7 +70,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "dream-notes-prod"
       }
     },
     "owner": "rork",
@@ -78,7 +78,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/your-project-id"
+      "url": "https://u.expo.dev/dream-notes-prod"
     }
   }
 }
